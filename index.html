@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Megatec Maps</title>
+
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
+
+    <style>
+
+        html, body
+        {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            height: 90%;
+            width: 100%;
+        }
+        
+        #tool {
+            height: 90%;   
+            width: 20%;
+        }
+        
+        #titulo
+        {
+            width: 100%;
+            height: 10%;
+            display: table;
+            padding: 7px;
+        }
+
+        #logo {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        #tools
+        {
+            display: table-cell;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .icone-tools
+        {
+            color: #fff;
+            font-weight: bold;
+            margin: 7px;;
+        }
+
+        .balao-info
+        {
+            color: #000000;
+        }
+
+        .modal {
+            display:    none;
+            position:   fixed;
+            z-index:    1000;
+            top:        0;
+            left:       0;
+            height:     100%;
+            width:      100%;
+            background: rgba( 255, 255, 255, .8 )
+            url('http://sampsonresume.com/labs/pIkfp.gif')
+            50% 50%
+            no-repeat;
+        }
+
+        /* When the body has the loading class, we turn
+           the scrollbar off with overflow:hidden */
+        body.loading {
+            overflow: hidden;
+        }
+
+        /* Anytime the body has the loading class, our
+           modal element will be visible */
+        body.loading .modal {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="modal"></div>
+
+    <div id="titulo">
+        <div id="logo">
+<!--            <img src="images/logo.png">-->
+        </div>
+
+        <div id="tools">
+            <div id="pesquisar" class="fa fa-bars fa-2x icone-tools"></div>
+            <div id="dividas" class="fa fa-question-circle fa-2x icone-tools"></div>
+        </div>
+
+    </div>
+
+    <div style="float:left;width: 20%;padding: 5px" id="tool">
+
+        <ul class="nav nav-tabs">
+            <li class="active"><a href="#search" data-toggle="tab">Pesquisar</a></li>
+            <li><a href="#configurar" data-toggle="tab">Ajustar</a></li>
+        </ul>
+        <div id="tabTools" class="tab-content">
+            <div class="tab-pane fade active in" id="search">
+                <form id="form-search">
+                    <div>
+                        <label class="control-label">Agência</label>
+                        <input type="text" id="agencia-pesquisa" name="agencia-pesquisa" class="form-control col-sm-12" placeholder="Nome da Agência">
+
+                        <div class="form-group">
+
+                            <label class="control-label">Status do Chamado</label>
+                            <div>
+                                <select class="form-control" id="select">
+                                    <option>1</option>
+                                    <option>2</option>
+                                    <option>3</option>
+                                    <option>4</option>
+                                    <option>5</option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <div>
+                        <a href="#" class="btn btn-info" ID="exec-pesquisa">Consultar</a>
+                    </div>
+
+                </form>
+            </div>
+            <div class="tab-pane fade" id="configurar">
+                <div>
+                    <div>
+                        <input id="chk-ajustar-agencias" type="checkbox" checked="checked">Mostrar as Agências.
+                    </div>
+                    <div>
+                        <input id="chk-ajustar-filiais" type="checkbox" checked="checked">Mostrar as Filiais.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    <div id="map" style="float:right;width: 80%"></div>
+
+        <div class="modal fade" tabindex="-1" role="dialog" id="modal-login">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Autenticação</h4>
+                </div>
+                <div class="modal-body">
+
+                    <form id="form-login" >
+
+                        <div class="row">
+                            <div class="form-group  col-sm-12">
+                                <label>Usuário</label>
+                                <input type="text" class="form-control" id="usuario"
+                                       name="usuario" placeholder="usuario@empresa.com.br" >
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group  col-sm-12">
+                                <label>Senha</label>
+                                <input type="password" class="form-control" id="senha"
+                                       name="senha" placeholder="Senha" >
+                            </div>
+                        </div>
+
+
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" style="width: 100px">Entrar</button>
+                    <button type="button" class="btn btn-primary" style="width: 100px" data-dismiss="modal">Sair</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+
+     <script src="js/jquery.js"></script>
+    <script src="js/markerclusterer_compiled.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+
+    <script>
+
+        var map;
+
+        currentLat = 0;
+        currentLong = 0;
+
+        filiaisList = '';
+        agenciasList = '';
+
+        //Marcadores das agências.
+        marcadoresList = [];
+
+        //Marcadores para as empresas.
+        marcadoresFilialList = [];
+
+        arrayCookies = [];
+
+        carregarFiliais = true;
+        carregarAgencias = true;
+
+        dtd = $.Deferred();
+
+        body = $("body");
+
+        $('#pesquisar').on('click', function () {
+
+            divFerramenta = $('#tool');
+            divMap = $('#map');
+
+            if (divFerramenta.is(':visible'))
+            {
+                divMap.css('width','100%');
+                divFerramenta.hide();
+            }
+            else{
+                divMap.css('width','80%');
+                divFerramenta.show();
+            }
+
+            google.maps.event.trigger(map, 'resize');
+
+        });
+
+        $('#exec-pesquisa').on('click', function () {
+
+        });
+
+        $('#chk-ajustar-agencias').on('change', function () {
+
+           var value = $(this).is(':checked');
+           ocultarMostrarAgencias(value);
+
+           //Salvar a configuração.
+            updateCookieValue('mgt-maps-ajustar-agencias',value);
+
+        });
+
+        $('#chk-ajustar-filiais').on('change', function () {
+
+            var value = $(this).is(':checked');
+            ocultarMostrarFiliais(value);
+
+            updateCookieValue('mgt-maps-ajustar-filiais',value);
+
+        });
+
+
+        function loadCookies()
+        {
+            configCookie = document.cookie.trim();
+
+            if(configCookie.length == 0)
+                return;
+
+            configCookie = configCookie.split(';');
+
+            var item = '';
+
+            for (ck in configCookie)
+            {
+                item =  configCookie[ck];
+                arrayCookies.push(item);
+            }
+        }
+
+        function getCookieValue(cookie)
+        {
+            var arrayItem  = '';
+            var arrayKey = '';
+            var arrayValue = '';
+
+            var retorno = null;
+
+            for (ce in arrayCookies)
+            {
+                arrayItem = arrayCookies[ce];
+                arrayItem = arrayItem.split('=');
+
+                arrayKey = arrayItem[0].trim();
+                arrayValue = arrayItem[1].trim();
+                arrayValue = arrayValue.toLowerCase();
+
+                if(arrayKey == cookie)
+                {
+                    retorno =  arrayValue=="true"?true:false;
+                    break;
+                }
+            }
+
+            return retorno;
+        }
+
+        function updateCookieValue(nome,valor)
+        {
+            document.cookie = nome + '=' + valor;
+
+        }
+
+        function getAgencias()
+        {            
+            //Get json of company;
+            $.ajax({
+                method: "POST",
+                url: "server/json/agencias.php",
+                data: {},
+                dataType: 'json',
+                async: false,
+                success: function(data){
+             
+                   agenciasList = data;
+                   
+                   return true;
+                   
+                },
+                error: function(){
+                    alert('Falha!!');
+                    return false;
+                }               
+                
+        });
+        
+        return false;
+            
+        }
+        
+        function getFiliais()
+        {
+            //Get json of company;
+            $.ajax({
+                method: "POST",
+                url: "server/json/filiais.php",
+                data: {},
+                dataType: 'json',
+                async: false,
+                success: function(data){
+                   filiaisList = data;
+                   return true;
+                },
+                error: function(){
+                    alert('Falha!!');
+                    return false;
+                }               
+                
+        });
+        
+        return false;
+            
+        }
+
+        function ocultarMostrarAgencias(mostrar)
+        {
+            var marcador = '';
+
+            for(marcadorAgencia in marcadoresList)
+            {
+                marcador = marcadoresList[marcadorAgencia];
+                marcador.setVisible(mostrar);
+            }
+
+            markerCluster.repaint();
+        }
+
+        function ocultarMostrarFiliais(mostrar)
+        {
+            var marcador = '';
+
+            for(marcadorFilial in marcadoresFilialList)
+            {
+                marcador = marcadoresFilialList[marcadorFilial];
+                marcador.setVisible(mostrar);
+            }
+        }
+
+        function viewMap()
+        {
+            //Lat and Long center of Brasil (Default);
+            currentLat = -10.183055555555555;
+            currentLong = -48.33361111111111;
+
+            map = new google.maps.Map(document.getElementById('map'),{
+                center : {lat: currentLat, lng: currentLong},
+                zoom: 4,
+                mapTypeId:  google.maps.MapTypeId.HYBRID
+            });
+
+            for(var j in agenciasList)
+            {
+                    var  agencia = agenciasList[j];
+                    
+                    if(agencia.Lat == null || agencia.Long == null)
+                    {
+                        continue;
+                    }
+
+                    var latLong = new google.maps.LatLng(agencia.Lat,agencia.Long);
+
+                    marcador  = null;
+
+                     marcador = new google.maps.Marker({
+                         map: map,
+                         position: latLong,
+                         icon: 'images/pin-alert.png',
+                         clickable: true
+                     });
+
+                     var contentInfo = '<div class="balao-info">' +
+                             '<b>Agência: </b>' + agencia.Nome +
+                             '<br><b>Local:</b> ' + agencia.Cidade + '-' + agencia.Estado +
+                             '<br><b>Endereço:</b> ' + agencia.Endereco
+                             + '</div>';
+
+                     marcador.info = new google.maps.InfoWindow({
+                         content: contentInfo
+                     });
+
+                     marcadoresList.push(marcador);
+
+                    marcador.addListener('click', function() {
+                        this.info.open(map,this);
+                    });
+
+                    marcador.addListener('visible_changed', function(){
+
+                        if (this.getVisible()) {
+                            markerCluster.addMarker(this, true);
+                        } else {
+                            markerCluster.removeMarker(this, true);
+                        }
+
+                    });
+
+                     if(agenciasList.length == marcadoresList.length)
+                     {
+                         markerCluster = new MarkerClusterer(map, marcadoresList);
+                     }
+            }
+
+            for(var f in filiaisList)
+            {
+                var  filial = filiaisList[f];
+
+                if(filial.Lat == null || filial.Long == null)
+                  continue;
+
+                var latLong = new google.maps.LatLng(filial.Lat,filial.Long);
+
+                marcador  = null;
+
+                marcador = new google.maps.Marker({
+                    map: map,
+                    position: latLong,
+                    icon: 'images/marker-icon.png',
+                    clickable: true
+                });
+
+                var contentInfo = '<div class="balao-info">' +
+                        '<b>Filial: </b>' + filial.Nome +
+                        '<br><b>Local:</b> ' + filial.Cidade + '-' + filial.Estado +
+                        '<br><b>Endereço:</b> ' + filial.Endereco
+                        + '</div>';
+
+                marcador.info = new google.maps.InfoWindow({
+                    content: contentInfo
+                });
+
+                marcadoresFilialList.push(marcador);
+
+                marcador.addListener('click', function() {
+
+                    map.setZoom(10);
+                    map.setCenter(this.getPosition());
+
+                    this.info.open(map,this);
+                });
+
+            }
+
+        }
+
+        function initMap()
+        {
+            //Carregar Configurações.
+            loadCookies();
+
+            carregarFiliais = getCookieValue('mgt-maps-ajustar-filiais');
+
+            if(carregarFiliais == null)
+                carregarFiliais = true;
+
+            $('#chk-ajustar-filiais').attr('checked',carregarFiliais?'checked':'');
+
+            carregarAgencias = getCookieValue('mgt-maps-ajustar-agencias');
+
+            if(carregarAgencias == null)
+                carregarAgencias = true;
+
+            $('#chk-ajustar-agencias').attr('checked',carregarAgencias?'checked':'');
+
+            if(carregarFiliais)
+                getFiliais();
+
+            if(carregarAgencias)
+                getAgencias();
+
+            viewMap();
+
+        }
+
+
+    </script>   
+        
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzew04CarAyPrcJk3zfjwMTuB21q9CSJ8&callback=initMap"
+            async defer>
+    </script>
+
+</body>
+</html>
